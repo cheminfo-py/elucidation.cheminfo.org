@@ -6,14 +6,20 @@ test.beforeEach(async ({ page }) => {
   await stubIdleApi(page);
 });
 
-test('the landing page explains the tool and offers both ways in', async ({ page }) => {
+test('the landing page explains the tool and offers both ways in', async ({
+  page,
+}) => {
   await page.goto('/');
 
   await expect(
     page.getByRole('heading', { name: /Find the structure behind/ }),
   ).toBeVisible();
-  await expect(page.getByText('Use your own spectrum', { exact: true })).toBeVisible();
-  await expect(page.getByText('Look at worked examples', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Use your own spectrum', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Look at worked examples', { exact: true }),
+  ).toBeVisible();
 });
 
 test('there is exactly one drop target on the page', async ({ page }) => {
@@ -33,8 +39,12 @@ test('the citation and DOI are on the home page, not only in the footer', async 
   const citation = page.getByTestId('home-citation');
   await expect(citation).toBeVisible();
   await expect(citation).toContainText('Nature Communications');
-  await expect(citation.getByRole('link', { name: /doi:10\.1038/ })).toBeVisible();
-  await expect(citation.getByRole('button', { name: 'Copy BibTeX' })).toBeVisible();
+  await expect(
+    citation.getByRole('link', { name: /doi:10\.1038/ }),
+  ).toBeVisible();
+  await expect(
+    citation.getByRole('button', { name: 'Copy BibTeX' }),
+  ).toBeVisible();
 });
 
 test('the two entry points navigate where they say', async ({ page }) => {
@@ -47,7 +57,9 @@ test('the two entry points navigate where they say', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'How the method works' }).click();
   await expect(
-    page.getByRole('heading', { name: /Structure elucidation from a 1H NMR spectrum/ }),
+    page.getByRole('heading', {
+      name: /Structure elucidation from a 1H NMR spectrum/,
+    }),
   ).toBeVisible();
   expect(page.url()).toContain('#/about');
 });
@@ -64,4 +76,57 @@ test('the welcome panel gives way to the spectrum once a file is loaded', async 
   await expect(
     page.getByRole('heading', { name: /Find the structure behind/ }),
   ).toHaveCount(0);
+});
+
+test('the drag-over overlay fills the drop zone instead of collapsing', async ({
+  page,
+}) => {
+  // The drop zone's root is `height: 100%` and its drag overlay is
+  // `position: absolute; inset: 0`. Against a min-height parent the root resolves to
+  // zero, so the overlay shrank to its own 5px border and spilled its contents over
+  // the label above. The wrapper therefore needs a definite height.
+  await page.goto('/');
+  const zone = page.getByTestId('file-dropzone');
+  await expect(zone).toBeVisible();
+
+  // Dispatch on the drop zone's own root: the events do not reach it from the wrapper.
+  await page.evaluate(() => {
+    const root = document.querySelector(
+      '[data-testid="file-dropzone"]',
+    )?.firstElementChild;
+    if (!root) throw new Error('the drop zone root is missing');
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(['x'], 'a.jdx'));
+    for (const type of ['dragenter', 'dragover']) {
+      root.dispatchEvent(
+        new DragEvent(type, {
+          dataTransfer: transfer,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }
+  });
+
+  // Wait for the overlay to render before measuring it.
+  await expect(zone).toContainText('Drop the files here');
+
+  const measured = await page.evaluate(() => {
+    const wrapper = document.querySelector('[data-testid="file-dropzone"]');
+    const root = wrapper?.firstElementChild;
+    if (!wrapper || !root) return null;
+    const overlay = [...wrapper.querySelectorAll('div')].find(
+      (element) => globalThis.getComputedStyle(element).position === 'absolute',
+    );
+    return {
+      wrapperHeight: Math.round(wrapper.getBoundingClientRect().height),
+      rootHeight: Math.round(root.getBoundingClientRect().height),
+      overlayHeight: overlay
+        ? Math.round(overlay.getBoundingClientRect().height)
+        : 0,
+    };
+  });
+  expect(measured?.wrapperHeight).toBeGreaterThan(100);
+  expect(measured?.rootHeight).toBe(measured?.wrapperHeight);
+  expect(measured?.overlayHeight).toBe(measured?.wrapperHeight);
 });

@@ -82,7 +82,11 @@ export function InputPanel(props: InputPanelProps) {
         label="Spectrum and optional reference structure"
         helperText="JCAMP-DX (.jdx, .dx), zipped Bruker, JEOL or Varian data. Add a .mol file to score the run against a known answer."
       >
-        <div style={{ minHeight: 210 }} data-testid="file-dropzone">
+        {/* A definite height, not min-height: the drop zone's root is `height: 100%`,
+            which resolves to auto against a min-height parent and collapses the root to
+            zero. Its drag-over overlay is `position: absolute; inset: 0`, so it would
+            then shrink to its own border and spill its contents over the label. */}
+        <div style={{ height: 210 }} data-testid="file-dropzone">
           <DropZone
             accept={ACCEPTED_FILES}
             onDrop={(files) => void handleFiles(files)}
