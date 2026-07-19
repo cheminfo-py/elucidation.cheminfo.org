@@ -5,3 +5,10 @@ dist
 node_modules
 playwright-report
 test-results
+
+# Runtime data produced by docker compose: the shared result cache, the redis
+# volume, container logs and the PubChem index the vectordb service mounts.
+cache
+data
+logs
+pubchem_vector_db_hnsw_pqm_16_ef_256_m_32
