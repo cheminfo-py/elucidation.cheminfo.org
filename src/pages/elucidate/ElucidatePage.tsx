@@ -2,10 +2,11 @@ import { Alert, Callout, Card, Switch, Tag } from '@blueprintjs/core';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useEffect, useState } from 'react';
 
-import { cancelJob, getQueueStats } from '../../api/client.ts';
+import { cancelJob, getQueueStats, getWorkers } from '../../api/client.ts';
 import type { SubmitOutcome } from '../../api/submit.ts';
 import { submitSpectrum } from '../../api/submit.ts';
 import type { QueueStats } from '../../api/types.ts';
+import { countSlots } from '../../api/types.ts';
 import { CandidateList } from '../../components/CandidateList.tsx';
 import { JobProgress } from '../../components/JobProgress.tsx';
 import { SpectrumPlot } from '../../components/SpectrumPlot.tsx';
@@ -218,9 +219,17 @@ function useQueueStats(): QueueStats | null {
   useEffect(() => {
     let cancelled = false;
     const load = (): void => {
-      getQueueStats(preferences.value.apiUrl)
-        .then((value) => {
-          if (!cancelled) setStats(value);
+      const apiUrl = preferences.value.apiUrl;
+      // `/queue/stats` only names the nodes; the pool size lives in `/workers`. A failing
+      // `/workers` must not blank the queue panel, so it degrades to a null slot count.
+      Promise.all([
+        getQueueStats(apiUrl),
+        getWorkers(apiUrl)
+          .then(countSlots)
+          .catch(() => null),
+      ])
+        .then(([value, slots]) => {
+          if (!cancelled) setStats({ ...value, slots });
         })
         .catch(() => {
           if (!cancelled) setStats(null);

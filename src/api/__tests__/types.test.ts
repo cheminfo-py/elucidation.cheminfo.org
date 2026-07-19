@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { parseHash } from '../../state/view.ts';
 import {
   candidateFormula,
+  countSlots,
   extractCandidates,
   isRunningStatus,
   isTerminalStatus,
@@ -54,4 +55,28 @@ test('hash routes are parsed and deep links carry an id', () => {
     page: 'elucidate',
     id: null,
   });
+});
+
+test('slots are summed across worker nodes', () => {
+  // Shape taken verbatim from the deployed /workers response.
+  expect(
+    countSlots({
+      workers: { 'celery@6135b5887a13': { pool: { 'max-concurrency': 12 } } },
+    }),
+  ).toBe(12);
+  expect(
+    countSlots({
+      workers: {
+        a: { pool: { 'max-concurrency': 12 } },
+        b: { pool: { 'max-concurrency': 4 } },
+      },
+    }),
+  ).toBe(16);
+});
+
+test('an unreported pool size yields null rather than zero slots', () => {
+  expect(countSlots({})).toBe(null);
+  expect(countSlots({ workers: {} })).toBe(null);
+  expect(countSlots({ workers: { a: {} } })).toBe(null);
+  expect(countSlots({ workers: { a: { pool: {} } } })).toBe(null);
 });

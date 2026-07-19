@@ -5,6 +5,7 @@ import type {
   QueueStats,
   SubmitRequest,
   SubmitResponse,
+  WorkersResponse,
 } from './types.ts';
 
 /**
@@ -96,6 +97,15 @@ export async function cancelJob(jobId: string, baseUrl = ''): Promise<void> {
  */
 export async function getQueueStats(baseUrl = ''): Promise<QueueStats> {
   return requestJson<QueueStats>(`${baseUrl}/queue/stats`);
+}
+
+/**
+ * Reads per-node worker details, whose pool size is the real concurrency limit.
+ * @param baseUrl - API origin. Empty string means same-origin.
+ * @returns The worker map, keyed by Celery node name.
+ */
+export async function getWorkers(baseUrl = ''): Promise<WorkersResponse> {
+  return requestJson<WorkersResponse>(`${baseUrl}/workers`);
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {

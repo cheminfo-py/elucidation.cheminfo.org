@@ -95,6 +95,44 @@ export interface QueueStats {
   total_submitted_jobs?: number;
   workers?: string[];
   error?: string;
+  /** Merged in client-side from `/workers`; null when that call failed. */
+  slots?: number | null;
+}
+
+/** One node in the `/workers` response. Only the pool size is used here. */
+export interface WorkerInfo {
+  pool?: {
+    'max-concurrency'?: number;
+  };
+}
+
+/** Response of `/workers`, keyed by Celery node name (e.g. `celery@6135b5887a13`). */
+export interface WorkersResponse {
+  workers?: Record<string, WorkerInfo>;
+}
+
+/**
+ * Total task slots across every worker node.
+ *
+ * This, not the node count, is what bounds how many jobs run at once: the deployment
+ * runs a single node with `--concurrency=12`, so `workers.length` of 1 understates
+ * capacity twelvefold.
+ * @param response - The parsed `/workers` payload.
+ * @returns The summed pool size, or null when no node reported one.
+ */
+export function countSlots(response: WorkersResponse): number | null {
+  const nodes = response.workers;
+  if (!nodes) return null;
+  let total = 0;
+  let known = false;
+  for (const name of Object.keys(nodes)) {
+    const slots = nodes[name]?.pool?.['max-concurrency'];
+    if (typeof slots === 'number') {
+      total += slots;
+      known = true;
+    }
+  }
+  return known ? total : null;
 }
 
 const TERMINAL_STATUSES = new Set(['success', 'failure', 'revoked']);

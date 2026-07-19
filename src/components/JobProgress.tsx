@@ -87,9 +87,7 @@ export function JobProgress(props: JobProgressProps) {
         {queue !== null && (
           <span>
             Queue: {queue.active_tasks ?? 0} running ·{' '}
-            {queue.reserved_tasks ?? 0} waiting · {queue.workers?.length ?? 0}{' '}
-            worker
-            {(queue.workers?.length ?? 0) === 1 ? '' : 's'}
+            {queue.reserved_tasks ?? 0} waiting · {describeCapacity(queue)}
           </span>
         )}
         <span>
@@ -98,6 +96,22 @@ export function JobProgress(props: JobProgressProps) {
       </div>
     </Card>
   );
+}
+
+/**
+ * Capacity as slots rather than nodes.
+ *
+ * A node count alone reads as a bottleneck it is not: the deployment runs one node with
+ * twelve task slots, so "1 worker" suggests jobs serialise when twelve can run at once.
+ * @param queue - The queue statistics, with the slot count merged in.
+ * @returns A phrase such as `12 slots (1 worker)`.
+ */
+function describeCapacity(queue: QueueStats): string {
+  const nodes = queue.workers?.length ?? 0;
+  const nodeText = `${nodes} worker${nodes === 1 ? '' : 's'}`;
+  const slots = queue.slots;
+  if (typeof slots !== 'number') return nodeText;
+  return `${slots} slot${slots === 1 ? '' : 's'} (${nodeText})`;
 }
 
 function describeStage(status: string, waiting: boolean): string {
