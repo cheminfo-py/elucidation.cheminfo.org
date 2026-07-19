@@ -1,11 +1,15 @@
-.claude
-.env
-.git
-.github
-compose*.yaml
-coverage
-dist
-e2e
-node_modules
-playwright-report
-test-results
+# Allowlist, not a denylist. This directory is both the source tree and the deployment
+# root, so runtime data accumulates next to the code: the job result cache, the redis
+# volume, and the PubChem index the vectordb service mounts, which runs to tens of
+# gigabytes. Naming those to exclude them is fragile, since anything added later is sent
+# to the build daemon by default. Ignoring everything and listing what `vite build`
+# actually needs keeps the context at a few megabytes whatever else lands here.
+*
+
+!package.json
+!package-lock.json
+!index.html
+!vite.config.ts
+!tsconfig.json
+!src
+!public
