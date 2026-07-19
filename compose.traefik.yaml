@@ -36,17 +36,13 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    # Documented exception, same shape as the nginx one: the redis entrypoint starts as
-    # root and drops to the redis user, so it needs SETUID/SETGID for setpriv and CHOWN
-    # for the chown of /data it performs first. With a bare `cap_drop: ALL` it exits
-    # immediately with "setpriv: setresuid failed: Operation not permitted", never
-    # registers in Docker's DNS, and every api call then fails to resolve `redis`.
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
+    # Deliberately not capability-hardened, unlike the other services. Its entrypoint
+    # runs as root to chown /data and then drops to the redis user, which needs
+    # SETUID/SETGID/CHOWN *and* DAC_READ_SEARCH: the appendonlydir it created earlier is
+    # mode 0700 owned by redis, and a root without DAC_READ_SEARCH cannot even traverse
+    # it, so the entrypoint's `find` fails and takes the container down with it. Dropping
+    # capabilities here cost two production outages; the caps that would be needed to
+    # keep it working are broad enough that dropping them buys very little.
     ulimits:
       core: 0
     restart: unless-stopped
